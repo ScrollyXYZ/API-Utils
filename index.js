@@ -535,7 +535,7 @@ const ABI = [
   ];
 
 // Create a provider instance
-const provider = new ethers.providers.JsonRpcProvider('https://rpc.scroll.io');
+const provider = new ethers.providers.JsonRpcProvider('https://scroll.drpc.org');
 
 // Create a contract instance
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
