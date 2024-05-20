@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const ethers = require('ethers');
+const { ethers } = require('ethers'); // Ensure proper import
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -534,26 +534,27 @@ const ABI = [
     }
   ];
 
-const provider = new ethers.providers.JsonRpcProvider('https://rpc.scroll.io');
+// Create a provider instance
+const provider = new ethers.providers.JsonRpcProvider('https://rpc.scroll.io'); // Ensure the RPC URL is correct
+
+// Create a contract instance
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 async function getUsernames(address) {
   try {
     const idCounter = await contract.idCounter();
-    const batchSize = 100; // Number of domains to fetch in each batch
     const domainPromises = [];
-    
-    for (let i = 0; i < idCounter; i += batchSize) {
-      const batch = Array.from({ length: Math.min(batchSize, idCounter - i) }, (_, j) => i + j).map(index => contract.domains(index));
-      const batchResults = await Promise.all(batch);
-      domainPromises.push(...batchResults);
+
+    // Batch requests to avoid timeouts
+    for (let i = 0; i < idCounter; i++) {
+      domainPromises.push(contract.domains(i));
     }
-    
+
     const domains = await Promise.all(domainPromises);
     const usernames = domains
       .filter(domain => domain.holder.toLowerCase() === address.toLowerCase())
       .map(domain => domain.name);
-    
+
     return usernames;
   } catch (error) {
     console.error("Error fetching usernames:", error);
@@ -577,7 +578,5 @@ app.get('/api/usernames', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
-
-module.exports = app;
