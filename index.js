@@ -545,7 +545,6 @@ async function getUsernames(address) {
     const idCounter = await contract.idCounter();
     const domainPromises = [];
 
-    // Batch requests to avoid timeouts
     for (let i = 1; i <= idCounter; i++) {
       domainPromises.push(contract.tokenURI(i));
     }
@@ -559,7 +558,7 @@ async function getUsernames(address) {
         const json = JSON.parse(jsonStr);
         const domainName = json.name.split('.')[0];  // Assuming the name is in the format 'name.tld'
         
-        const holder = await contract.getDomainHolder(domainName);
+        const holder = await contract.ownerOf(i);
         if (holder.toLowerCase() === address.toLowerCase()) {
           usernames.push(domainName);
         }
