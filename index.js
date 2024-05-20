@@ -533,60 +533,47 @@ const ABI = [
       "type": "function"
     }
   ];
-
-// Create a provider instance
-const provider = new ethers.JsonRpcProvider('https://scroll.drpc.org');
-
-// Create a contract instance
-const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-
-async function getUsernames(address) {
-  try {
-    const idCounter = await contract.idCounter();
-    const domainPromises = [];
-
-    for (let i = 1; i <= idCounter; i++) {
-      domainPromises.push(contract.tokenURI(i));
-    }
-
-    const tokenURIs = await Promise.all(domainPromises);
-    const usernames = [];
-
-    for (let i = 0; i < tokenURIs.length; i++) {
-      if (tokenURIs[i].startsWith('data:application/json;base64,')) {
-        const jsonStr = Buffer.from(tokenURIs[i].substring(29), 'base64').toString('utf-8');
-        const json = JSON.parse(jsonStr);
-        const domainName = json.name.split('.')[0];  // Assuming the name is in the format 'name.tld'
-        
-        const holder = await contract.ownerOf(i);
-        if (holder.toLowerCase() === address.toLowerCase()) {
-          usernames.push(domainName);
+  
+  // Create a provider instance
+  const provider = new ethers.providers.JsonRpcProvider('https://scroll.drpc.org');
+  
+  // Create a contract instance
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+  
+  async function getTokenIdsByAddress(address) {
+    try {
+      const idCounter = await contract.idCounter();
+      const tokenIds = [];
+  
+      for (let i = 1; i <= idCounter; i++) {
+        const owner = await contract.ownerOf(i);
+        if (owner.toLowerCase() === address.toLowerCase()) {
+          tokenIds.push(i);
         }
       }
+  
+      return tokenIds;
+    } catch (error) {
+      console.error("Error fetching token IDs:", error);
+      throw error;
     }
-
-    return usernames;
-  } catch (error) {
-    console.error("Error fetching usernames:", error);
-    throw error;
   }
-}
-
-app.get('/api/usernames', async (req, res) => {
-  const { address } = req.query;
-
-  if (!ethers.utils.isAddress(address)) {
-    return res.status(400).json({ error: 'Invalid Ethereum address' });
-  }
-
-  try {
-    const usernames = await getUsernames(address);
-    res.status(200).json({ usernames });
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching usernames' });
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+  
+  app.get('/api/usernames', async (req, res) => {
+    const { address } = req.query;
+  
+    if (!ethers.utils.isAddress(address)) {
+      return res.status(400).json({ error: 'Invalid Ethereum address' });
+    }
+  
+    try {
+      const tokenIds = await getTokenIdsByAddress(address);
+      res.status(200).json({ tokenIds });
+    } catch (error) {
+      res.status(500).json({ error: 'Error fetching token IDs' });
+    }
+  });
+  
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
