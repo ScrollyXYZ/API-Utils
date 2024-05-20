@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { ethers } = require('ethers'); // Ensure proper import
+const { ethers } = require('ethers');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -535,7 +535,7 @@ const ABI = [
   ];
 
 // Create a provider instance
-const provider = new ethers.providers.JsonRpcProvider('https://scroll.drpc.org');
+const provider = new ethers.JsonRpcProvider('https://scroll.drpc.org');
 
 // Create a contract instance
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
