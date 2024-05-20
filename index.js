@@ -535,7 +535,7 @@ const ABI = [
   ];
 
 // Create a provider instance
-const provider = new ethers.providers.JsonRpcProvider('https://rpc.scroll.io'); // Ensure the RPC URL is correct
+const provider = new ethers.providers.JsonRpcProvider('https://rpc.scroll.io');
 
 // Create a contract instance
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
@@ -546,14 +546,25 @@ async function getUsernames(address) {
     const domainPromises = [];
 
     // Batch requests to avoid timeouts
-    for (let i = 0; i < idCounter; i++) {
-      domainPromises.push(contract.domains(i));
+    for (let i = 1; i <= idCounter; i++) {
+      domainPromises.push(contract.tokenURI(i));
     }
 
-    const domains = await Promise.all(domainPromises);
-    const usernames = domains
-      .filter(domain => domain.holder.toLowerCase() === address.toLowerCase())
-      .map(domain => domain.name);
+    const tokenURIs = await Promise.all(domainPromises);
+    const usernames = [];
+
+    for (let i = 0; i < tokenURIs.length; i++) {
+      if (tokenURIs[i].startsWith('data:application/json;base64,')) {
+        const jsonStr = Buffer.from(tokenURIs[i].substring(29), 'base64').toString('utf-8');
+        const json = JSON.parse(jsonStr);
+        const domainName = json.name.split('.')[0];  // Assuming the name is in the format 'name.tld'
+        
+        const holder = await contract.getDomainHolder(domainName);
+        if (holder.toLowerCase() === address.toLowerCase()) {
+          usernames.push(domainName);
+        }
+      }
+    }
 
     return usernames;
   } catch (error) {
