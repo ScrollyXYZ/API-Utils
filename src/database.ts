@@ -1,8 +1,17 @@
 import mongoose from 'mongoose';
 
-mongoose.connect('your_mongodb_connection_string', {
+mongoose.set('strictQuery', true);
+
+const mongoDBConnectionString = process.env.MONGODB_CONNECTION_STRING;
+
+if (!mongoDBConnectionString) {
+  console.error("MongoDB connection string is not defined in environment variables.");
+  process.exit(1);
+}
+
+mongoose.connect(mongoDBConnectionString, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
 });
 
 const db = mongoose.connection;
