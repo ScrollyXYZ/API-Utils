@@ -15,6 +15,11 @@ app.use(cors());
 app.use(express.json());
 app.use('/api', routes);
 
+app.get('/trigger-cache', async (req, res) => {
+  await buildCache();
+  res.send('Cache build process triggered.');
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   buildCache(); // Build the initial cache when the server starts

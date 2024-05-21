@@ -7,9 +7,8 @@ const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-// Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: parseInt(process.env.FETCH_INTERVAL || '60000'), // Default to 1 request per minute
+  minTime: parseInt(process.env.FETCH_INTERVAL || '60000'),
 });
 
 async function fetchOwner(tokenId: number) {
@@ -24,12 +23,14 @@ async function fetchOwner(tokenId: number) {
 }
 
 export async function buildCache() {
+  console.log('Starting cache build process...');
   try {
     const idCounter = await contract.idCounter();
     const totalTokens = idCounter.toNumber();
     console.log(`idCounter: ${totalTokens}`);
-    
+
     for (let i = 1; i <= totalTokens; i++) {
+      console.log(`Scheduling fetch for token ${i}`);
       await limiter.schedule(() => fetchOwner(i));
     }
   } catch (error) {
