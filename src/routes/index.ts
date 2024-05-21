@@ -1,11 +1,20 @@
 import express from 'express';
 import Token from '../models/token';
+import { buildCache } from '../cacheBuilder';
 
 const router = express.Router();
 
 router.get('/tokens', async (req, res) => {
+  const { address } = req.query;
+
   try {
-    const tokens = await Token.find().select('-__v');
+    let tokens;
+    if (address && typeof address === 'string') {
+      tokens = await Token.find({ owner: (address as string).toLowerCase() }).select('-__v');
+    } else {
+      tokens = await Token.find().select('-__v');
+    }
+
     res.json({ totalTokens: tokens.length, tokens });
   } catch (error) {
     console.error('Error fetching tokens:', error);
