@@ -7,8 +7,9 @@ const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
+// Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: parseInt(process.env.FETCH_INTERVAL || '60000'),
+  minTime: 1000, // Set to 1 second for testing purposes
 });
 
 async function fetchOwner(tokenId: number) {
@@ -23,33 +24,44 @@ async function fetchOwner(tokenId: number) {
 }
 
 export async function buildCache() {
-  console.log('Starting cache build process...');
   try {
-    const idCounter = await contract.idCounter();
-    console.log(`Total tokens to fetch: ${idCounter.toString()}`);
+    const idCounter = (await contract.idCounter()).toNumber();
+    console.log(`Total tokens to fetch: ${idCounter}`);
+
     for (let i = 1; i <= idCounter; i++) {
-      await limiter.schedule(() => fetchOwner(i));
+      console.log(`Scheduling fetch for token ${i}`);
+      limiter.schedule(() => fetchOwner(i));
     }
+
+    console.log('All fetch tasks have been scheduled.');
   } catch (error) {
     console.error("Error building cache:", error);
   }
 }
 
-export async function monitorIdCounter() {
-  console.log('Starting idCounter monitoring...');
+async function monitorIdCounter() {
   try {
-    let previousIdCounter = await contract.idCounter();
+    const initialIdCounter = (await contract.idCounter()).toNumber();
+    let currentIdCounter = initialIdCounter;
+    console.log(`Initial ID Counter: ${initialIdCounter}`);
+
     setInterval(async () => {
-      const currentIdCounter = await contract.idCounter();
-      if (currentIdCounter.gt(previousIdCounter)) {
-        console.log(`New tokens detected: ${currentIdCounter.sub(previousIdCounter).toString()} new tokens`);
-        for (let i = previousIdCounter.toNumber() + 1; i <= currentIdCounter.toNumber(); i++) {
-          await limiter.schedule(() => fetchOwner(i));
+      try {
+        const newIdCounter = (await contract.idCounter()).toNumber();
+        if (newIdCounter > currentIdCounter) {
+          console.log(`New tokens detected. Updating cache from ${currentIdCounter + 1} to ${newIdCounter}`);
+          for (let i = currentIdCounter + 1; i <= newIdCounter; i++) {
+            limiter.schedule(() => fetchOwner(i));
+          }
+          currentIdCounter = newIdCounter;
         }
-        previousIdCounter = currentIdCounter;
+      } catch (error) {
+        console.error("Error monitoring idCounter:", error);
       }
-    }, parseInt(process.env.MONITOR_INTERVAL || '120000')); // Default to check every 2 minutes
+    }, 120000); // Check every 2 minutes
   } catch (error) {
-    console.error("Error monitoring idCounter:", error);
+    console.error("Error initializing idCounter monitoring:", error);
   }
 }
+
+monitorIdCounter(); // Start monitoring the idCounter
