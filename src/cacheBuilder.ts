@@ -1,15 +1,12 @@
 import { ethers } from 'ethers';
-import cron from 'node-cron';
 import Token from './models/token';
-import { ABI } from './config/abi';
+import { abi } from './config/abi';
 
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
-const RPC_URL = process.env.RPC_URL;
+const CONTRACT_ADDRESS = "0xc2C543D39426bfd1dB66bBde2Dd9E4a5c7212876";
+const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider);
 
-const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-
-async function buildCache() {
+export async function buildCache() {
   try {
     const idCounter = await contract.idCounter();
     for (let i = 1; i <= idCounter; i++) {
@@ -21,8 +18,3 @@ async function buildCache() {
     console.error("Error building cache:", error);
   }
 }
-
-// Schedule cache construction to run every minute
-cron.schedule('*/1 * * * *', async () => {
-  await buildCache();
-});

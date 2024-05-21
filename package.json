@@ -5,13 +5,15 @@
     "main": "server.ts",
     "scripts": {
       "start": "node dist/server.js",
-      "build": "tsc"
+      "build": "tsc",
+      "dev": "ts-node server.ts"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "dependencies": {
       "cors": "^2.8.5",
+      "dotenv": "^16.4.5",
       "ethers": "^6.12.1",
       "express": "^4.19.2",
       "mongoose": "^6.1.8",
