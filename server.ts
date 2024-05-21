@@ -16,6 +16,6 @@ app.use(express.json());
 app.use('/api', routes);
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  buildCache(); // Build the initial cache when the server starts
+    console.log(`Server running on port ${port}`);
+    buildCache(); // Build the initial cache when the server starts
 });
