@@ -9,7 +9,7 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 60000, // 1 request per min
+  minTime: parseInt(process.env.FETCH_INTERVAL || '60000'), // Default to 1 request per minute
 });
 
 async function fetchOwner(tokenId: number) {

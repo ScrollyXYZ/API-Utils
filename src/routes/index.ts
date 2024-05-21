@@ -14,13 +14,13 @@ router.get('/tokens', async (req, res) => {
 });
 
 router.get('/database-status', async (req, res) => {
-  try {
-    const totalTokens = await Token.countDocuments();
-    res.json({ totalTokens });
-  } catch (error) {
-    console.error('Error checking database status:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
+    try {
+      const totalTokens = await Token.countDocuments();
+      res.json({ totalTokens });
+    } catch (error) {
+      console.error('Error fetching database status:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
 
 export default router;
