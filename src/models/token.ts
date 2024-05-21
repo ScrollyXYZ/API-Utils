@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 
 const tokenSchema = new mongoose.Schema({
-  tokenId: Number,
-  owner: String,
+  tokenId: { type: Number, required: true },
+  owner: { type: String, required: true },
 });
 
 const Token = mongoose.model('Token', tokenSchema);
