@@ -27,12 +27,10 @@ export async function buildCache() {
   console.log('Starting cache build process...');
   try {
     const idCounter = await contract.idCounter();
-    console.log(`Total tokens to cache: ${idCounter.toString()}`);
+    console.log(`Total tokens to fetch: ${idCounter.toString()}`);
     for (let i = 1; i <= idCounter; i++) {
-      console.log(`Scheduling fetch for token ${i}`);
       await limiter.schedule(() => fetchOwner(i));
     }
-    console.log('Cache build process completed.');
   } catch (error) {
     console.error("Error building cache:", error);
   }

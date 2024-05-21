@@ -17,13 +17,8 @@ app.use('/api', routes);
 
 app.get('/trigger-cache', async (req, res) => {
   console.log('Triggering cache build...');
-  try {
-    await buildCache();
-    res.send('Cache build process triggered.');
-  } catch (error) {
-    console.error('Error triggering cache build:', error);
-    res.status(500).send('Error triggering cache build.');
-  }
+  await buildCache();
+  res.send('Cache build process triggered.');
 });
 
 app.listen(port, () => {
