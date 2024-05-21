@@ -9,7 +9,7 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 1000, // Set to 1 second for testing purposes
+  minTime: 30000, // Set to 30 seconds for testing purposes
 });
 
 async function fetchOwner(tokenId: number) {
@@ -38,30 +38,3 @@ export async function buildCache() {
     console.error("Error building cache:", error);
   }
 }
-
-async function monitorIdCounter() {
-  try {
-    const initialIdCounter = (await contract.idCounter()).toNumber();
-    let currentIdCounter = initialIdCounter;
-    console.log(`Initial ID Counter: ${initialIdCounter}`);
-
-    setInterval(async () => {
-      try {
-        const newIdCounter = (await contract.idCounter()).toNumber();
-        if (newIdCounter > currentIdCounter) {
-          console.log(`New tokens detected. Updating cache from ${currentIdCounter + 1} to ${newIdCounter}`);
-          for (let i = currentIdCounter + 1; i <= newIdCounter; i++) {
-            limiter.schedule(() => fetchOwner(i));
-          }
-          currentIdCounter = newIdCounter;
-        }
-      } catch (error) {
-        console.error("Error monitoring idCounter:", error);
-      }
-    }, 120000); // Check every 2 minutes
-  } catch (error) {
-    console.error("Error initializing idCounter monitoring:", error);
-  }
-}
-
-monitorIdCounter(); // Start monitoring the idCounter

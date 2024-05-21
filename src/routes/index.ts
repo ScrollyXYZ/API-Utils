@@ -1,6 +1,7 @@
 import express from 'express';
 import Token from '../models/token';
 import { buildCache } from '../cacheBuilder';
+import { monitorIdCounter } from '../eventListener';  // Import the monitor function
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ router.get('/tokens', async (req, res) => {
   try {
     let tokens;
     if (address && typeof address === 'string') {
-      tokens = await Token.find({ owner: (address as string).toLowerCase() }).select('-__v');
+      tokens = await Token.find({ owner: address.toLowerCase() }).select('-__v');
     } else {
       tokens = await Token.find().select('-__v');
     }
@@ -41,5 +42,8 @@ router.get('/trigger-cache', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+// Ensure the monitorIdCounter is running
+monitorIdCounter();
 
 export default router;

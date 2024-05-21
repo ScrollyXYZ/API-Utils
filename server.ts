@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import './src/config/database'; // Ensure the database connection is initialized
-import routes from './src/routes/index'; // Corrected the import path for routes
+import routes from './src/routes/index';
+import './src/eventListener'; // Ensure the event listener is imported
 
 dotenv.config();
 
