@@ -13,6 +13,7 @@ export async function buildCache() {
       const owner = await contract.ownerOf(i);
       await Token.findOneAndUpdate({ tokenId: i }, { owner: owner.toLowerCase() }, { upsert: true });
       console.log(`Token ${i} cached with owner ${owner}`);
+      await wait(1000);
     }
   } catch (error) {
     console.error("Error building cache:", error);
