@@ -13,23 +13,26 @@ const limiter = new Bottleneck({
 });
 
 async function fetchOwner(tokenId: number) {
-    console.log(`Fetching owner for token ${tokenId}`);
-    try {
-      const owner = await contract.ownerOf(tokenId);
-      await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
-      console.log(`Token ${tokenId} cached with owner ${owner}`);
-    } catch (error) {
-      console.error(`Error fetching owner for token ${tokenId}:`, error);
-    }
+  console.log(`Fetching owner for token ${tokenId}`);
+  try {
+    const owner = await contract.ownerOf(tokenId);
+    await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
+    console.log(`Token ${tokenId} cached with owner ${owner}`);
+  } catch (error) {
+    console.error(`Error fetching owner for token ${tokenId}:`, error);
   }
-  
-  export async function buildCache() {
-    try {
-      const idCounter = await contract.idCounter();
-      for (let i = 1; i <= idCounter; i++) {
-        limiter.schedule(() => fetchOwner(i));
-      }
-    } catch (error) {
-      console.error("Error building cache:", error);
+}
+
+export async function buildCache() {
+  try {
+    const idCounter = await contract.idCounter();
+    const totalTokens = idCounter.toNumber();
+    console.log(`idCounter: ${totalTokens}`);
+    
+    for (let i = 1; i <= totalTokens; i++) {
+      await limiter.schedule(() => fetchOwner(i));
     }
+  } catch (error) {
+    console.error("Error building cache:", error);
   }
+}
