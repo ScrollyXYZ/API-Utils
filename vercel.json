@@ -1,9 +1,9 @@
 {
     "version": 2,
     "builds": [
-      { "src": "index.js", "use": "@vercel/node" }
+      { "src": "server.js", "use": "@vercel/node" }
     ],
     "routes": [
-      { "src": "/api/usernames", "dest": "/index.js" }
+      { "src": "/api/(.*)", "dest": "/server.js" }
     ]
   }
