@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import './src/config/database'; // Ensure the database connection is initialized
+import './src/config/database';
 import { buildCache } from './src/cacheBuilder';
 import './src/eventListener';
 import routes from './src/routes/index';
