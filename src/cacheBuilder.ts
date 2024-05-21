@@ -34,3 +34,22 @@ export async function buildCache() {
     console.error("Error building cache:", error);
   }
 }
+
+export async function monitorIdCounter() {
+  console.log('Starting idCounter monitoring...');
+  try {
+    let previousIdCounter = await contract.idCounter();
+    setInterval(async () => {
+      const currentIdCounter = await contract.idCounter();
+      if (currentIdCounter.gt(previousIdCounter)) {
+        console.log(`New tokens detected: ${currentIdCounter.sub(previousIdCounter).toString()} new tokens`);
+        for (let i = previousIdCounter.toNumber() + 1; i <= currentIdCounter.toNumber(); i++) {
+          await limiter.schedule(() => fetchOwner(i));
+        }
+        previousIdCounter = currentIdCounter;
+      }
+    }, parseInt(process.env.MONITOR_INTERVAL || '120000')); // Default to check every 2 minutes
+  } catch (error) {
+    console.error("Error monitoring idCounter:", error);
+  }
+}
