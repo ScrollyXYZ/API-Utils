@@ -8,32 +8,30 @@ const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 const limiter = new Bottleneck({
-  minTime: parseInt(process.env.FETCH_INTERVAL || '60000'),
-});
-
-async function fetchOwner(tokenId: number) {
-  console.log(`Fetching owner for token ${tokenId}`);
-  try {
-    const owner = await contract.ownerOf(tokenId);
-    await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
-    console.log(`Token ${tokenId} cached with owner ${owner}`);
-  } catch (error) {
-    console.error(`Error fetching owner for token ${tokenId}:`, error);
-  }
-}
-
-export async function buildCache() {
-  console.log('Starting cache build process...');
-  try {
-    const idCounter = await contract.idCounter();
-    const totalTokens = idCounter.toNumber();
-    console.log(`idCounter: ${totalTokens}`);
-
-    for (let i = 1; i <= totalTokens; i++) {
-      console.log(`Scheduling fetch for token ${i}`);
-      await limiter.schedule(() => fetchOwner(i));
+    minTime: parseInt(process.env.FETCH_INTERVAL || '60000'),
+  });
+  
+  async function fetchOwner(tokenId: number) {
+    console.log(`Fetching owner for token ${tokenId}`);
+    try {
+      const owner = await contract.ownerOf(tokenId);
+      await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
+      console.log(`Token ${tokenId} cached with owner ${owner}`);
+    } catch (error) {
+      console.error(`Error fetching owner for token ${tokenId}:`, error);
     }
-  } catch (error) {
-    console.error("Error building cache:", error);
   }
-}
+  
+  export async function buildCache() {
+    try {
+      console.log('Starting cache build process...');
+      const idCounter = await contract.idCounter();
+      console.log(`Total tokens to cache: ${idCounter}`);
+      for (let i = 1; i <= idCounter; i++) {
+        await limiter.schedule(() => fetchOwner(i));
+      }
+      console.log('Cache build process completed.');
+    } catch (error) {
+      console.error('Error building cache:', error);
+    }
+  }
