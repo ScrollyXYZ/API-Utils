@@ -29,6 +29,7 @@ async function fetchOwner(tokenId: number) {
 async function updateProgress(tokenId: number) {
   try {
     await Progress.findOneAndUpdate({}, { lastProcessedTokenId: tokenId }, { upsert: true });
+    console.log(`Progress updated to token ${tokenId}`);
   } catch (error) {
     console.error(`Error updating progress for token ${tokenId}:`, error);
   }
@@ -52,7 +53,7 @@ export async function buildCache() {
     const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       console.log(`Scheduling fetch for token ${i}`);
-      await limiter.schedule(() => fetchOwner(i));
+      limiter.schedule(() => fetchOwner(i));
     }
 
     console.log('All fetch tasks have been scheduled.');
