@@ -2,10 +2,14 @@ import { ethers } from 'ethers';
 import Token from './models/token';
 import { ABI } from './config/abi';
 import Bottleneck from 'bottleneck';
+import fs from 'fs';
+import path from 'path';
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+const progressFilePath = path.join(__dirname, '../progress.json'); // Adjusted path
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
@@ -18,9 +22,24 @@ async function fetchOwner(tokenId: number) {
     const owner = await contract.ownerOf(tokenId);
     await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
     console.log(`Token ${tokenId} cached with owner ${owner}`);
+    updateProgress(tokenId);
   } catch (error) {
     console.error(`Error fetching owner for token ${tokenId}:`, error);
   }
+}
+
+function updateProgress(tokenId: number) {
+  const progress = { lastProcessedTokenId: tokenId };
+  fs.writeFileSync(progressFilePath, JSON.stringify(progress));
+}
+
+function getLastProcessedTokenId(): number {
+  if (fs.existsSync(progressFilePath)) {
+    const data = fs.readFileSync(progressFilePath, 'utf8');
+    const progress = JSON.parse(data);
+    return progress.lastProcessedTokenId;
+  }
+  return 0;
 }
 
 export async function buildCache() {
@@ -28,7 +47,8 @@ export async function buildCache() {
     const idCounter = (await contract.idCounter()).toNumber();
     console.log(`Total tokens to fetch: ${idCounter}`);
 
-    for (let i = 1; i <= idCounter; i++) {
+    const lastProcessedTokenId = getLastProcessedTokenId();
+    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       console.log(`Scheduling fetch for token ${i}`);
       limiter.schedule(() => fetchOwner(i));
     }
@@ -44,7 +64,8 @@ async function recoverMissingData() {
     const idCounter = (await contract.idCounter()).toNumber();
     console.log(`Recovering missing data up to token ${idCounter}`);
 
-    for (let i = 1; i <= idCounter; i++) {
+    const lastProcessedTokenId = getLastProcessedTokenId();
+    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       const token = await Token.findOne({ tokenId: i });
       if (!token) {
         console.log(`Token ${i} is missing. Scheduling fetch.`);
