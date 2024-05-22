@@ -3,9 +3,12 @@ import Token from './models/token';
 import Progress from './models/progress';
 import { ABI } from './config/abi';
 import Bottleneck from 'bottleneck';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
-const provider = new ethers.providers.JsonRpcProvider({ 
+const provider = new ethers.providers.JsonRpcProvider({
   url: process.env.RPC_URL || '',
   timeout: 120000 // 120 seconds
 });
@@ -55,7 +58,7 @@ export async function buildCache() {
     const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       console.log(`Scheduling fetch for token ${i}`);
-      limiter.schedule(() => fetchOwner(i));
+      await limiter.schedule(() => fetchOwner(i));
     }
 
     console.log('All fetch tasks have been scheduled.');

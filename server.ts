@@ -20,12 +20,10 @@ app.get('/trigger-cache', async (req, res) => {
   res.send('Cache build process triggered.');
 });
 
-app.get('/recover-missing', async (req, res) => {
-  await recoverMissingData();
-  res.send('Recovery process triggered.');
-});
-
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   monitorIdCounter(); // Start monitoring the idCounter
+  setInterval(async () => {
+    await recoverMissingData();
+  }, 600000); // Check for missing data every 10 minutes
 });
