@@ -3,6 +3,7 @@ import Token from './models/token';
 import Progress from './models/progress';
 import { ABI } from './config/abi';
 import Bottleneck from 'bottleneck';
+import fs from 'fs';
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
@@ -10,11 +11,8 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: parseInt(process.env.FETCH_INTERVAL || '5000'), // 5 seconds by default
-  maxConcurrent: 1, // Ensure only one request is made at a time
-  reservoir: 10, // Initial number of requests allowed
-  reservoirRefreshAmount: 10, // Number of requests added each interval
-  reservoirRefreshInterval: 60 * 1000, // Interval duration (1 minute)
+  minTime: 1000, // 1 second per request
+  maxConcurrent: 1,
 });
 
 async function fetchOwner(tokenId: number) {
@@ -26,8 +24,6 @@ async function fetchOwner(tokenId: number) {
     await updateProgress(tokenId);
   } catch (error) {
     console.error(`Error fetching owner for token ${tokenId}:`, error);
-    // Retry the request if it fails
-    limiter.schedule(() => fetchOwner(tokenId));
   }
 }
 
@@ -74,9 +70,6 @@ async function recoverMissingData() {
     }
 
     console.log('Missing data recovery tasks have been scheduled.');
-    setTimeout(() => {
-      monitorIdCounter();
-    }, 600000); // Wait 10 minutes before starting to monitor idCounter
   } catch (error) {
     console.error("Error recovering missing data:", error);
   }
