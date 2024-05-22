@@ -7,31 +7,33 @@ import Bottleneck from 'bottleneck';
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider({
   url: process.env.RPC_URL || '',
-  timeout: 300000 // 5 minutes
+  timeout: 300000, // 5 minutes
 });
+
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 const limiter = new Bottleneck({
-  minTime: 10000, // 10 seconds
+  minTime: 5000, // 5 seconds
   maxConcurrent: 1,
 });
 
-async function fetchOwner(tokenIds: number[]) {
-  console.log(`Fetching owners for tokens ${tokenIds}`);
+async function fetchOwners(tokenIds: number[]) {
+  console.log(`Fetching owners for tokens ${tokenIds.join(',')}`);
   try {
     const ownerPromises = tokenIds.map(async (tokenId) => {
       const owner = await contract.ownerOf(tokenId);
       await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
-      await updateProgress(tokenId);
       return owner;
     });
 
     const owners = await Promise.all(ownerPromises);
-    owners.forEach((owner, idx) => {
-      console.log(`Token ${tokenIds[idx]} cached with owner ${owner}`);
+    owners.forEach((owner, index) => {
+      console.log(`Token ${tokenIds[index]} cached with owner ${owner}`);
     });
+
+    await updateProgress(Math.max(...tokenIds));
   } catch (error) {
-    console.error(`Error fetching owners for tokens ${tokenIds}:`, error);
+    console.error(`Error fetching owners for tokens ${tokenIds.join(',')}:`, error);
   }
 }
 
@@ -61,12 +63,9 @@ export async function buildCache() {
 
     const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i += 5) {
-      const tokenIds: number[] = [];
-      for (let j = 0; j < 5 && (i + j) <= idCounter; j++) {
-        tokenIds.push(i + j);
-      }
-      console.log(`Scheduling fetch for tokens ${tokenIds}`);
-      limiter.schedule(() => fetchOwner(tokenIds));
+      const tokenIds = Array.from({ length: 5 }, (_, index) => i + index).filter(id => id <= idCounter);
+      console.log(`Scheduling fetch for tokens ${tokenIds.join(',')}`);
+      limiter.schedule(() => fetchOwners(tokenIds));
     }
 
     console.log('All fetch tasks have been scheduled.');
@@ -84,7 +83,7 @@ export async function recoverMissingData() {
       const token = await Token.findOne({ tokenId: i });
       if (!token) {
         console.log(`Token ${i} is missing. Scheduling fetch.`);
-        await limiter.schedule(() => fetchOwner([i]));
+        await limiter.schedule(() => fetchOwners([i]));
       }
     }
 
@@ -106,11 +105,8 @@ export async function monitorIdCounter() {
         if (newIdCounter > currentIdCounter) {
           console.log(`New tokens detected. Updating cache from ${currentIdCounter + 1} to ${newIdCounter}`);
           for (let i = currentIdCounter + 1; i <= newIdCounter; i += 5) {
-            const tokenIds: number[] = [];
-            for (let j = 0; j < 5 && (i + j) <= newIdCounter; j++) {
-              tokenIds.push(i + j);
-            }
-            await limiter.schedule(() => fetchOwner(tokenIds));
+            const tokenIds = Array.from({ length: 5 }, (_, index) => i + index).filter(id => id <= newIdCounter);
+            await limiter.schedule(() => fetchOwners(tokenIds));
           }
           currentIdCounter = newIdCounter;
         } else {
