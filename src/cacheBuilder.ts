@@ -11,6 +11,10 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 // Set up Bottleneck
 const limiter = new Bottleneck({
   minTime: parseInt(process.env.FETCH_INTERVAL || '5000'), // 5 seconds by default
+  maxConcurrent: 1, // Ensure only one request is made at a time
+  reservoir: 10, // Initial number of requests allowed
+  reservoirRefreshAmount: 10, // Number of requests added each interval
+  reservoirRefreshInterval: 60 * 1000, // Interval duration (1 minute)
 });
 
 async function fetchOwner(tokenId: number) {
@@ -22,6 +26,8 @@ async function fetchOwner(tokenId: number) {
     await updateProgress(tokenId);
   } catch (error) {
     console.error(`Error fetching owner for token ${tokenId}:`, error);
+    // Retry the request if it fails
+    limiter.schedule(() => fetchOwner(tokenId));
   }
 }
 
@@ -34,13 +40,32 @@ async function getLastProcessedTokenId(): Promise<number> {
   return progress ? progress.lastProcessedTokenId : 0;
 }
 
+export async function buildCache() {
+  try {
+    const idCounter = (await contract.idCounter()).toNumber();
+    console.log(`Total tokens to fetch: ${idCounter}`);
+
+    const lastProcessedTokenId = await getLastProcessedTokenId();
+    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
+      console.log(`Scheduling fetch for token ${i}`);
+      await limiter.schedule(() => fetchOwner(i));
+    }
+
+    console.log('All fetch tasks have been scheduled.');
+    setTimeout(() => {
+      recoverMissingData();
+    }, 600000); // Wait 10 minutes before checking for missing data
+  } catch (error) {
+    console.error("Error building cache:", error);
+  }
+}
+
 async function recoverMissingData() {
   try {
     const idCounter = (await contract.idCounter()).toNumber();
     console.log(`Recovering missing data up to token ${idCounter}`);
 
-    const lastProcessedTokenId = await getLastProcessedTokenId();
-    for (let i = 1; i <= idCounter; i++) {  // Start from 1 instead of lastProcessedTokenId
+    for (let i = 1; i <= idCounter; i++) {
       const token = await Token.findOne({ tokenId: i });
       if (!token) {
         console.log(`Token ${i} is missing. Scheduling fetch.`);
@@ -49,31 +74,11 @@ async function recoverMissingData() {
     }
 
     console.log('Missing data recovery tasks have been scheduled.');
+    setTimeout(() => {
+      monitorIdCounter();
+    }, 600000); // Wait 10 minutes before starting to monitor idCounter
   } catch (error) {
     console.error("Error recovering missing data:", error);
-  }
-}
-
-export async function buildCache() {
-  try {
-    await recoverMissingData(); // First, recover any missing data
-
-    const idCounter = (await contract.idCounter()).toNumber();
-    console.log(`Total tokens to fetch: ${idCounter}`);
-
-    const lastProcessedTokenId = await getLastProcessedTokenId();
-    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
-      console.log(`Scheduling fetch for token ${i}`);
-      await limiter.schedule(() => fetchOwner(i)).then(() => {
-        console.log(`Fetch for token ${i} completed`);
-      }).catch(error => {
-        console.error(`Error in scheduled fetch for token ${i}:`, error);
-      });
-    }
-
-    console.log('All fetch tasks have been scheduled.');
-  } catch (error) {
-    console.error("Error building cache:", error);
   }
 }
 
