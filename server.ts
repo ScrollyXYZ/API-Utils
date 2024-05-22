@@ -16,16 +16,12 @@ app.use(express.json());
 app.use('/api', routes);
 
 app.get('/trigger-cache', async (req, res) => {
-  try {
-    await buildCache();
-    res.send('Cache build process triggered.');
-  } catch (error) {
-    console.error('Error triggering cache build:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
+  await buildCache();
+  res.send('Cache build process triggered.');
 });
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  buildCache(); // Initial cache build when server starts
   monitorIdCounter(); // Start monitoring the idCounter
 });

@@ -1,9 +1,7 @@
 import mongoose from 'mongoose';
 
 const progressSchema = new mongoose.Schema({
-  lastProcessedTokenId: { type: Number, required: true }
+  lastProcessedTokenId: { type: Number, default: 0 },
 });
 
-const Progress = mongoose.model('Progress', progressSchema);
-
-export default Progress;
+export default mongoose.model('Progress', progressSchema);

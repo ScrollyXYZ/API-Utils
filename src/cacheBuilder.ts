@@ -13,15 +13,22 @@ const limiter = new Bottleneck({
   maxConcurrent: 1,
 });
 
-async function fetchOwner(tokenId: number) {
-  console.log(`Fetching owner for token ${tokenId}`);
+async function fetchOwner(tokenIds: number[]) {
+  console.log(`Fetching owners for tokens ${tokenIds}`);
   try {
-    const owner = await contract.ownerOf(tokenId);
-    await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
-    console.log(`Token ${tokenId} cached with owner ${owner}`);
-    await updateProgress(tokenId);
+    const ownerPromises = tokenIds.map(async (tokenId) => {
+      const owner = await contract.ownerOf(tokenId);
+      await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
+      await updateProgress(tokenId);
+      return owner;
+    });
+
+    const owners = await Promise.all(ownerPromises);
+    owners.forEach((owner, idx) => {
+      console.log(`Token ${tokenIds[idx]} cached with owner ${owner}`);
+    });
   } catch (error) {
-    console.error(`Error fetching owner for token ${tokenId}:`, error);
+    console.error(`Error fetching owners for tokens ${tokenIds}:`, error);
   }
 }
 
@@ -50,21 +57,22 @@ export async function buildCache() {
     console.log(`Total tokens to fetch: ${idCounter}`);
 
     const lastProcessedTokenId = await getLastProcessedTokenId();
-    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
-      console.log(`Scheduling fetch for token ${i}`);
-      limiter.schedule(() => fetchOwner(i));
+    for (let i = lastProcessedTokenId + 1; i <= idCounter; i += 5) {
+      const tokenIds = [];
+      for (let j = 0; j < 5 && (i + j) <= idCounter; j++) {
+        tokenIds.push(i + j);
+      }
+      console.log(`Scheduling fetch for tokens ${tokenIds}`);
+      limiter.schedule(() => fetchOwner(tokenIds));
     }
 
     console.log('All fetch tasks have been scheduled.');
-    setTimeout(() => {
-      recoverMissingData();
-    }, 600000); // Check for missing data every 10 minutes
   } catch (error) {
     console.error("Error building cache:", error);
   }
 }
 
-async function recoverMissingData() {
+export async function recoverMissingData() {
   try {
     const idCounter = (await contract.idCounter()).toNumber();
     console.log(`Recovering missing data up to token ${idCounter}`);
@@ -73,7 +81,7 @@ async function recoverMissingData() {
       const token = await Token.findOne({ tokenId: i });
       if (!token) {
         console.log(`Token ${i} is missing. Scheduling fetch.`);
-        await limiter.schedule(() => fetchOwner(i));
+        await limiter.schedule(() => fetchOwner([i]));
       }
     }
 
@@ -94,8 +102,12 @@ export async function monitorIdCounter() {
         const newIdCounter = (await contract.idCounter()).toNumber();
         if (newIdCounter > currentIdCounter) {
           console.log(`New tokens detected. Updating cache from ${currentIdCounter + 1} to ${newIdCounter}`);
-          for (let i = currentIdCounter + 1; i <= newIdCounter; i++) {
-            await limiter.schedule(() => fetchOwner(i));
+          for (let i = currentIdCounter + 1; i <= newIdCounter; i += 5) {
+            const tokenIds = [];
+            for (let j = 0; j < 5 && (i + j) <= newIdCounter; j++) {
+              tokenIds.push(i + j);
+            }
+            await limiter.schedule(() => fetchOwner(tokenIds));
           }
           currentIdCounter = newIdCounter;
         } else {
