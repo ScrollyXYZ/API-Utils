@@ -58,7 +58,7 @@ export async function buildCache() {
 
     const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i += 5) {
-      const tokenIds = [];
+      const tokenIds: number[] = [];
       for (let j = 0; j < 5 && (i + j) <= idCounter; j++) {
         tokenIds.push(i + j);
       }
@@ -103,7 +103,7 @@ export async function monitorIdCounter() {
         if (newIdCounter > currentIdCounter) {
           console.log(`New tokens detected. Updating cache from ${currentIdCounter + 1} to ${newIdCounter}`);
           for (let i = currentIdCounter + 1; i <= newIdCounter; i += 5) {
-            const tokenIds = [];
+            const tokenIds: number[] = [];
             for (let j = 0; j < 5 && (i + j) <= newIdCounter; j++) {
               tokenIds.push(i + j);
             }
