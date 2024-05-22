@@ -22,6 +22,6 @@ app.get('/trigger-cache', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-  buildCache(); // Initial cache build when server starts
   monitorIdCounter(); // Start monitoring the idCounter
+  buildCache(); // Start the initial cache build
 });

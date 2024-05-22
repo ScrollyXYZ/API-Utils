@@ -3,7 +3,6 @@ import Token from './models/token';
 import Progress from './models/progress';
 import { ABI } from './config/abi';
 import Bottleneck from 'bottleneck';
-import mongoose from './config/database'; // Ensure the database connection is initialized
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
