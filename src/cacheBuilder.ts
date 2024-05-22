@@ -10,7 +10,7 @@ dotenv.config();
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider({
   url: process.env.RPC_URL || '',
-  timeout: 120000 // 120 seconds
+  timeout: 1200000 // 120*10 seconds
 });
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
@@ -58,7 +58,7 @@ export async function buildCache() {
     const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       console.log(`Scheduling fetch for token ${i}`);
-      await limiter.schedule(() => fetchOwner(i));
+      limiter.schedule(() => fetchOwner(i));
     }
 
     console.log('All fetch tasks have been scheduled.');
