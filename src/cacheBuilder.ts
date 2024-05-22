@@ -2,7 +2,6 @@ import { ethers } from 'ethers';
 import Token from './models/token';
 import Progress from './models/progress';
 import { ABI } from './config/abi';
-import Bottleneck from 'bottleneck';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -10,14 +9,9 @@ dotenv.config();
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider({
   url: process.env.RPC_URL || '',
-  timeout: 1200000 // 120*10 seconds
+  timeout: 120000 // 120 seconds
 });
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-
-const limiter = new Bottleneck({
-  minTime: 10000, // 10 seconds
-  maxConcurrent: 1,
-});
 
 async function fetchOwner(tokenId: number) {
   console.log(`Fetching owner for token ${tokenId}`);
@@ -58,7 +52,7 @@ export async function buildCache() {
     const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       console.log(`Scheduling fetch for token ${i}`);
-      limiter.schedule(() => fetchOwner(i));
+      await fetchOwner(i);
     }
 
     console.log('All fetch tasks have been scheduled.');
@@ -76,7 +70,7 @@ export async function recoverMissingData() {
       const token = await Token.findOne({ tokenId: i });
       if (!token) {
         console.log(`Token ${i} is missing. Scheduling fetch.`);
-        await limiter.schedule(() => fetchOwner(i));
+        await fetchOwner(i);
       }
     }
 
@@ -98,7 +92,7 @@ export async function monitorIdCounter() {
         if (newIdCounter > currentIdCounter) {
           console.log(`New tokens detected. Updating cache from ${currentIdCounter + 1} to ${newIdCounter}`);
           for (let i = currentIdCounter + 1; i <= newIdCounter; i++) {
-            await limiter.schedule(() => fetchOwner(i));
+            await fetchOwner(i);
           }
           currentIdCounter = newIdCounter;
         } else {
