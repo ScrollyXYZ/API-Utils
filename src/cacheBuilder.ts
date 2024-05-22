@@ -5,7 +5,10 @@ import { ABI } from './config/abi';
 import Bottleneck from 'bottleneck';
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
-const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
+const provider = new ethers.providers.JsonRpcProvider({
+  url: process.env.RPC_URL || '',
+  timeout: 300000 // 5 minutes
+});
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 const limiter = new Bottleneck({
