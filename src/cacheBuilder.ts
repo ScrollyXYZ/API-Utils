@@ -10,7 +10,7 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 30000, // Set to 30 seconds for testing purposes
+  minTime: 1000, // Set to 1 seconds for testing purposes
 });
 
 async function fetchOwner(tokenId: number) {
