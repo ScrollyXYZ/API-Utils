@@ -10,7 +10,7 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 5000, // 5 seconds between requests
+  minTime: parseInt(process.env.FETCH_INTERVAL || '5000'), // 5 seconds by default
 });
 
 async function fetchOwner(tokenId: number) {
@@ -40,11 +40,11 @@ async function recoverMissingData() {
     console.log(`Recovering missing data up to token ${idCounter}`);
 
     const lastProcessedTokenId = await getLastProcessedTokenId();
-    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
+    for (let i = 1; i <= idCounter; i++) {  // Start from 1 instead of lastProcessedTokenId
       const token = await Token.findOne({ tokenId: i });
       if (!token) {
         console.log(`Token ${i} is missing. Scheduling fetch.`);
-        limiter.schedule(() => fetchOwner(i));
+        await limiter.schedule(() => fetchOwner(i));
       }
     }
 
@@ -64,7 +64,7 @@ export async function buildCache() {
     const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       console.log(`Scheduling fetch for token ${i}`);
-      limiter.schedule(() => fetchOwner(i)).then(() => {
+      await limiter.schedule(() => fetchOwner(i)).then(() => {
         console.log(`Fetch for token ${i} completed`);
       }).catch(error => {
         console.error(`Error in scheduled fetch for token ${i}:`, error);
