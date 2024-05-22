@@ -38,3 +38,52 @@ export async function buildCache() {
     console.error("Error building cache:", error);
   }
 }
+
+async function recoverMissingData() {
+  try {
+    const idCounter = (await contract.idCounter()).toNumber();
+    console.log(`Recovering missing data up to token ${idCounter}`);
+
+    for (let i = 1; i <= idCounter; i++) {
+      const token = await Token.findOne({ tokenId: i });
+      if (!token) {
+        console.log(`Token ${i} is missing. Scheduling fetch.`);
+        limiter.schedule(() => fetchOwner(i));
+      }
+    }
+
+    console.log('Missing data recovery tasks have been scheduled.');
+  } catch (error) {
+    console.error("Error recovering missing data:", error);
+  }
+}
+
+export async function monitorIdCounter() {
+  try {
+    const initialIdCounter = (await contract.idCounter()).toNumber();
+    let currentIdCounter = initialIdCounter;
+    console.log(`Initial ID Counter: ${initialIdCounter}`);
+
+    setInterval(async () => {
+      try {
+        const newIdCounter = (await contract.idCounter()).toNumber();
+        if (newIdCounter > currentIdCounter) {
+          console.log(`New tokens detected. Updating cache from ${currentIdCounter + 1} to ${newIdCounter}`);
+          for (let i = currentIdCounter + 1; i <= newIdCounter; i++) {
+            await limiter.schedule(() => fetchOwner(i));
+          }
+          currentIdCounter = newIdCounter;
+        } else {
+          console.log("No new tokens detected.");
+        }
+      } catch (error) {
+        console.error("Error monitoring idCounter:", error);
+      }
+    }, 120000); // Check every 2 minutes
+  } catch (error) {
+    console.error("Error initializing idCounter monitoring:", error);
+  }
+}
+
+recoverMissingData(); // Recover missing data on startup
+monitorIdCounter(); // Start monitoring the idCounter
