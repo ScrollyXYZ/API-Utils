@@ -9,9 +9,8 @@ const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-// Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 1000, // 1 second per request
+  minTime: 10000, // 10 seconds
   maxConcurrent: 1,
 });
 
@@ -28,12 +27,21 @@ async function fetchOwner(tokenId: number) {
 }
 
 async function updateProgress(tokenId: number) {
-  await Progress.findOneAndUpdate({}, { lastProcessedTokenId: tokenId }, { upsert: true });
+  try {
+    await Progress.findOneAndUpdate({}, { lastProcessedTokenId: tokenId }, { upsert: true });
+  } catch (error) {
+    console.error(`Error updating progress for token ${tokenId}:`, error);
+  }
 }
 
 async function getLastProcessedTokenId(): Promise<number> {
-  const progress = await Progress.findOne();
-  return progress ? progress.lastProcessedTokenId : 0;
+  try {
+    const progress = await Progress.findOne();
+    return progress ? progress.lastProcessedTokenId : 0;
+  } catch (error) {
+    console.error('Error getting last processed token ID:', error);
+    return 0;
+  }
 }
 
 export async function buildCache() {
@@ -50,7 +58,7 @@ export async function buildCache() {
     console.log('All fetch tasks have been scheduled.');
     setTimeout(() => {
       recoverMissingData();
-    }, 600000); // Wait 10 minutes before checking for missing data
+    }, 600000); // Check for missing data every 10 minutes
   } catch (error) {
     console.error("Error building cache:", error);
   }
@@ -96,7 +104,7 @@ export async function monitorIdCounter() {
       } catch (error) {
         console.error("Error monitoring idCounter:", error);
       }
-    }, 120000); // Check every 2 minutes
+    }, 600000); // Check every 10 minutes
   } catch (error) {
     console.error("Error initializing idCounter monitoring:", error);
   }
