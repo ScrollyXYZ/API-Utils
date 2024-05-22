@@ -42,4 +42,14 @@ router.get('/trigger-cache', async (req, res) => {
   }
 });
 
+router.get('/recover-missing-data', async (req, res) => {
+  try {
+    await recoverMissingData();
+    res.send('Missing data recovery process triggered.');
+  } catch (error) {
+    console.error('Error triggering missing data recovery:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 export default router;

@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import './src/config/database'; // Ensure the database connection is initialized
 import routes from './src/routes/index';
-import { buildCache, monitorIdCounter } from './src/cacheBuilder';
+import { buildCache, monitorIdCounter, recoverMissingData } from './src/cacheBuilder';
 import './src/eventListener'; // Ensure event listener is initialized
 
 dotenv.config();
@@ -18,6 +18,11 @@ app.use('/api', routes);
 app.get('/trigger-cache', async (req, res) => {
   await buildCache();
   res.send('Cache build process triggered.');
+});
+
+app.get('/recover-missing', async (req, res) => {
+  await recoverMissingData();
+  res.send('Recovery process triggered.');
 });
 
 app.listen(port, () => {
