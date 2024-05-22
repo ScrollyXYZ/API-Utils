@@ -13,7 +13,7 @@ const progressFilePath = path.join(__dirname, '../progress.json'); // Adjusted p
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 30000, // Set to 30 seconds for testing purposes
+  minTime: 5000, // Set to 5 seconds for testing purposes
 });
 
 async function fetchOwner(tokenId: number) {
