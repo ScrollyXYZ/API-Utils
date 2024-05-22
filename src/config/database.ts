@@ -12,20 +12,15 @@ if (!mongoDBConnectionString) {
   process.exit(1);
 }
 
-const connectDB = async () => {
-  try {
-    await mongoose.connect(mongoDBConnectionString, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    } as mongoose.ConnectOptions);
-    console.log('Connected to MongoDB');
-  } catch (error) {
+mongoose.connect(mongoDBConnectionString, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+} as mongoose.ConnectOptions)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(error => {
     console.error('Error connecting to MongoDB:', error);
     process.exit(1);
-  }
-};
-
-connectDB();
+  });
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
