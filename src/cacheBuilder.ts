@@ -1,19 +1,16 @@
 import { ethers } from 'ethers';
 import Token from './models/token';
+import Progress from './models/progress';
 import { ABI } from './config/abi';
 import Bottleneck from 'bottleneck';
-import fs from 'fs';
-import path from 'path';
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-const progressFilePath = path.join(__dirname, '../progress.json'); // Adjusted path
-
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 5000, // Set to 5 seconds for testing purposes
+  minTime: 30000, // Set to 30 seconds for testing purposes
 });
 
 async function fetchOwner(tokenId: number) {
@@ -22,24 +19,19 @@ async function fetchOwner(tokenId: number) {
     const owner = await contract.ownerOf(tokenId);
     await Token.findOneAndUpdate({ tokenId }, { owner: owner.toLowerCase() }, { upsert: true });
     console.log(`Token ${tokenId} cached with owner ${owner}`);
-    updateProgress(tokenId);
+    await updateProgress(tokenId);
   } catch (error) {
     console.error(`Error fetching owner for token ${tokenId}:`, error);
   }
 }
 
-function updateProgress(tokenId: number) {
-  const progress = { lastProcessedTokenId: tokenId };
-  fs.writeFileSync(progressFilePath, JSON.stringify(progress));
+async function updateProgress(tokenId: number) {
+  await Progress.findOneAndUpdate({}, { lastProcessedTokenId: tokenId }, { upsert: true });
 }
 
-function getLastProcessedTokenId(): number {
-  if (fs.existsSync(progressFilePath)) {
-    const data = fs.readFileSync(progressFilePath, 'utf8');
-    const progress = JSON.parse(data);
-    return progress.lastProcessedTokenId;
-  }
-  return 0;
+async function getLastProcessedTokenId(): Promise<number> {
+  const progress = await Progress.findOne();
+  return progress ? progress.lastProcessedTokenId : 0;
 }
 
 export async function buildCache() {
@@ -47,7 +39,7 @@ export async function buildCache() {
     const idCounter = (await contract.idCounter()).toNumber();
     console.log(`Total tokens to fetch: ${idCounter}`);
 
-    const lastProcessedTokenId = getLastProcessedTokenId();
+    const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       console.log(`Scheduling fetch for token ${i}`);
       limiter.schedule(() => fetchOwner(i));
@@ -64,7 +56,7 @@ async function recoverMissingData() {
     const idCounter = (await contract.idCounter()).toNumber();
     console.log(`Recovering missing data up to token ${idCounter}`);
 
-    const lastProcessedTokenId = getLastProcessedTokenId();
+    const lastProcessedTokenId = await getLastProcessedTokenId();
     for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
       const token = await Token.findOne({ tokenId: i });
       if (!token) {
