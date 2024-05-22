@@ -1,6 +1,6 @@
 import express from 'express';
 import Token from '../models/token';
-import { buildCache } from '../cacheBuilder';
+import { buildCache, recoverMissingData } from '../cacheBuilder';
 
 const router = express.Router();
 
