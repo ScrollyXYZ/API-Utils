@@ -10,7 +10,7 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 // Set up Bottleneck
 const limiter = new Bottleneck({
-  minTime: 1000, // Set to 1 seconds for testing purposes
+  minTime: 5000, // 5 seconds between requests
 });
 
 async function fetchOwner(tokenId: number) {
@@ -34,23 +34,6 @@ async function getLastProcessedTokenId(): Promise<number> {
   return progress ? progress.lastProcessedTokenId : 0;
 }
 
-export async function buildCache() {
-  try {
-    const idCounter = (await contract.idCounter()).toNumber();
-    console.log(`Total tokens to fetch: ${idCounter}`);
-
-    const lastProcessedTokenId = await getLastProcessedTokenId();
-    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
-      console.log(`Scheduling fetch for token ${i}`);
-      limiter.schedule(() => fetchOwner(i));
-    }
-
-    console.log('All fetch tasks have been scheduled.');
-  } catch (error) {
-    console.error("Error building cache:", error);
-  }
-}
-
 async function recoverMissingData() {
   try {
     const idCounter = (await contract.idCounter()).toNumber();
@@ -68,6 +51,29 @@ async function recoverMissingData() {
     console.log('Missing data recovery tasks have been scheduled.');
   } catch (error) {
     console.error("Error recovering missing data:", error);
+  }
+}
+
+export async function buildCache() {
+  try {
+    await recoverMissingData(); // First, recover any missing data
+
+    const idCounter = (await contract.idCounter()).toNumber();
+    console.log(`Total tokens to fetch: ${idCounter}`);
+
+    const lastProcessedTokenId = await getLastProcessedTokenId();
+    for (let i = lastProcessedTokenId + 1; i <= idCounter; i++) {
+      console.log(`Scheduling fetch for token ${i}`);
+      limiter.schedule(() => fetchOwner(i)).then(() => {
+        console.log(`Fetch for token ${i} completed`);
+      }).catch(error => {
+        console.error(`Error in scheduled fetch for token ${i}:`, error);
+      });
+    }
+
+    console.log('All fetch tasks have been scheduled.');
+  } catch (error) {
+    console.error("Error building cache:", error);
   }
 }
 
@@ -98,5 +104,4 @@ export async function monitorIdCounter() {
   }
 }
 
-recoverMissingData(); // Recover missing data on startup
 monitorIdCounter(); // Start monitoring the idCounter
