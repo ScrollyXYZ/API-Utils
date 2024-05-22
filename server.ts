@@ -16,8 +16,13 @@ app.use(express.json());
 app.use('/api', routes);
 
 app.get('/trigger-cache', async (req, res) => {
-  await buildCache();
-  res.send('Cache build process triggered.');
+  try {
+    await buildCache();
+    res.send('Cache build process triggered.');
+  } catch (error) {
+    console.error('Error triggering cache build:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 app.listen(port, () => {
